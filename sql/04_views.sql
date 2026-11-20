@@ -24,7 +24,8 @@ SELECT e.career_id, e.skill_id,
              / NULLIF(SUM(ds.default_weight * e.confidence), 0), 4) AS importance,
        COUNT(*)                                              AS n_sources,
        array_agg(ds.source_name ORDER BY ds.source_name)     AS sources,
-       ROUND(MAX(e.importance) - MIN(e.importance), 4)       AS disagreement
+       ROUND(MAX(e.importance) - MIN(e.importance), 4)       AS disagreement,
+       bool_and(e.requirement_type = 'optional')             AS optional_only
 FROM core.career_skill_evidence e
 JOIN core.data_sources ds ON ds.source_id = e.source_id
 GROUP BY e.career_id, e.skill_id;

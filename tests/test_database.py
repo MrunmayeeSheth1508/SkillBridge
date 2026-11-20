@@ -195,3 +195,23 @@ def test_learner_cannot_modify_evidence(cur):
     cur.execute("SET LOCAL ROLE skillbridge_learner")
     with pytest.raises(psycopg.errors.InsufficientPrivilege):
         cur.execute("DELETE FROM core.career_skill_evidence")
+
+
+# ---------------------------------------------------------------- crosswalk (Contribution 1)
+def test_crosswalk_evidence_is_traceable(cur):
+    cur.execute("SELECT COUNT(*) FROM core.career_source_codes WHERE match_type LIKE 'crosswalk%'")
+    if cur.fetchone()[0] == 0:
+        pytest.skip("crosswalk file not loaded")
+    cur.execute("""SELECT COUNT(*) FROM core.career_skill_evidence e
+                   JOIN core.careers c USING (career_id) JOIN core.data_sources d USING (source_id)
+                   WHERE d.source_name = 'ESCO' AND c.origin_code ~ '^\\d{2}-\\d{4}'
+                     AND e.source_record NOT LIKE '%via crosswalk%'""")
+    assert cur.fetchone()[0] == 0, "ESCO evidence on O*NET careers must name the crosswalk link"
+
+
+def test_corroborated_requirements_always_shown(cur, demo_user, target_career):
+    cur.execute("""SELECT COUNT(*) FROM core.v_career_skill_requirement r JOIN core.skills k USING (skill_id)
+                   WHERE r.career_id = %s AND r.n_sources > 1 AND k.skill_type <> 'work_activity'
+                     AND r.skill_id NOT IN (SELECT skill_id FROM core.fn_gap_analysis(%s, %s, true))""",
+                (target_career, demo_user, target_career))
+    assert cur.fetchone()[0] == 0

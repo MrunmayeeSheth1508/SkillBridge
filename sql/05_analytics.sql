@@ -16,13 +16,14 @@ INSERT INTO core.model_parameters (param_name, param_value, description) VALUES
  ('transfer_required_threshold', 0.60, 'O*NET importance at which a skill counts as required for P(b|a)'),
  ('transfer_min_support',        5,    'A skill must be required by at least this many careers'),
  ('gap_min_importance',          0.25, 'Scored skills/knowledge below this importance are not shown as gaps'),
- ('gap_min_importance_tech',     0.90, 'Technologies below this prior (i.e. not Hot/In Demand) are not shown'),
+ ('gap_min_importance_tech',     0.90, 'Technologies below this prior (i.e. not In Demand) are not shown'),
  ('roadmap_min_gap',             0.05, 'Gaps smaller than this are not put in a roadmap'),
  ('roadmap_max_skills',          12,   'Maximum target skills per roadmap (before prerequisites)'),
  ('prereq_mastery',              0.50, 'A prerequisite with effective proficiency below this is added to the plan'),
  ('hours_skill',                 40,   'Estimated hours to learn an O*NET skill from zero (scaled by gap and level)'),
  ('hours_knowledge',             40,   'Estimated hours for a knowledge area from zero'),
- ('hours_technology',            25,   'Estimated hours for a technology/tool from zero')
+ ('hours_technology',            25,   'Estimated hours for a technology/tool from zero'),
+ ('gap_include_esco_optional',   0,    '1 = also show skills that only ESCO lists, and only as optional')
 ON CONFLICT (param_name) DO NOTHING;
 
 -- ---------------------------------------------------------------------
@@ -174,9 +175,11 @@ LANGUAGE sql STABLE AS $$
         JOIN core.skills k ON k.skill_id = r.skill_id
         WHERE r.career_id = p_career
           AND k.skill_type IN ('skill', 'knowledge', 'technology')
-          AND r.importance >= CASE WHEN k.skill_type = 'technology'
-                                   THEN core.param('gap_min_importance_tech')
-                                   ELSE core.param('gap_min_importance') END
+          AND (r.importance >= CASE WHEN k.skill_type = 'technology'
+                                    THEN core.param('gap_min_importance_tech')
+                                    ELSE core.param('gap_min_importance') END
+               OR r.n_sources > 1)             -- corroborated by 2+ sources: always a requirement
+          AND (NOT r.optional_only OR COALESCE(core.param('gap_include_esco_optional'), 0) = 1)
     ),
     own AS (
         SELECT us.skill_id, us.proficiency FROM core.user_skills us WHERE us.user_id = p_user

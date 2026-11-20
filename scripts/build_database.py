@@ -29,7 +29,7 @@ import csv  # noqa: E402
 
 ROOT = ls.PROJECT_ROOT
 SQL_FILES = ["02_core_schema.sql", "03_transform.sql", "04_views.sql", "05_analytics.sql",
-             "06_nlp.sql", "07_security.sql"]
+             "06_nlp.sql", "07_security.sql", "08_crosswalk.sql"]
 CORE_REPORT = ROOT / "reports" / "core_build.md"
 CURATED_DIR = ROOT / "data" / "curated"
 
@@ -173,6 +173,13 @@ SUMMARY_QUERIES: list[tuple[str, str]] = [
                  GROUP BY 1, 2
                  HAVING bool_or(not_relevant = 'Y')
                     AND MAX(data_value::numeric) FILTER (WHERE scale_id = 'IM') <= 1) x"""),
+    ("Crosswalk links by match type", """
+        SELECT match_type, COUNT(*) AS links, COUNT(DISTINCT career_id) AS onet_careers
+        FROM core.v_career_crosswalk GROUP BY 1 ORDER BY 2 DESC"""),
+    ("Contribution 1: strongest O*NET vs ESCO tier disagreements (target careers)", """
+        SELECT career, skill, onet_type, onet_tier, esco_type, esco_tier
+        FROM core.v_tier_disagreement WHERE is_target
+        ORDER BY tier_gap DESC, career, skill LIMIT 20"""),
     ("Demo: top 20 requirements for Data Scientists", """
         SELECT skill, taxonomy, source, importance, level_norm, requirement_type, confidence
         FROM core.v_evidence_detail
@@ -338,6 +345,26 @@ def security_tests(conn) -> list[tuple[str, bool, str]]:
     return out
 
 
+def crosswalk_tests(conn) -> list[tuple[str, bool, str]]:
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM core.career_source_codes WHERE match_type LIKE 'crosswalk%'")
+    links = cur.fetchone()[0]
+    if links == 0:
+        return [("Crosswalk links O*NET careers to ESCO (file not found - skipped)", True,
+                 "download the crosswalk into data/raw to enable")]
+    cur.execute("""SELECT COUNT(*) FILTER (WHERE has_esco), COUNT(*) FROM (
+                     SELECT c.career_id, EXISTS (SELECT 1 FROM core.career_skill_evidence e
+                       JOIN core.data_sources d USING (source_id)
+                       WHERE e.career_id = c.career_id AND d.source_name = 'ESCO') AS has_esco
+                     FROM core.careers c WHERE c.is_target) t""")
+    with_esco, targets = cur.fetchone()
+    cur.execute("SELECT COUNT(*) FROM core.v_source_disagreement")
+    multi = cur.fetchone()[0]
+    return [("Crosswalk gives target careers ESCO evidence", with_esco > 0,
+             f"{links:,} links; {with_esco}/{targets} target careers have ESCO evidence; "
+             f"{multi:,} career-skill pairs with 2+ sources")]
+
+
 def table_md(cur, sql: str) -> list[str]:
     cur.execute(sql)
     cols = [d.name for d in cur.description]
@@ -377,6 +404,9 @@ def main() -> None:
 
         print("          Loading curated prerequisites, lexicon blocklist and demo learner ...")
         build_notes = load_curated_prerequisites(conn) + seed_demo_learner(conn)
+        print("          Applying the ESCO-O*NET crosswalk ...")
+        from crosswalk import load_crosswalk
+        build_notes += load_crosswalk(conn, raw_dir)
         from tune_lexicon import load_blocklist
         build_notes.append(f"{load_blocklist(conn)} lexicon labels blocked (learned on SkillSpan train)")
 
@@ -385,6 +415,7 @@ def main() -> None:
         tests += analytics_tests(conn)
         tests += nlp_tests(conn)
         tests += security_tests(conn)
+        tests += crosswalk_tests(conn)
         conn.execute("ANALYZE")
         cur = conn.cursor()
         report = ["# SkillBridge core database build report", "",
