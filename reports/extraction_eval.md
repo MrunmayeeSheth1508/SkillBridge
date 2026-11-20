@@ -1,8 +1,8 @@
 # SkillBridge skill extraction - SkillSpan evaluation
 
 - Split: **test**, sentences: **3,569**
-- Matching: **exact**, lexicon `core.mv_skill_lexicon` (O*NET + ESCO aliases)
-- Runtime: **3.6 s** inside PostgreSQL (1.0 ms per sentence), PostgreSQL 16.16
+- Matching: **exact**, lexicon `core.mv_skill_lexicon`: 101,512 O*NET + ESCO labels, 56 pruned using the train split
+- Runtime: **4.1 s** inside PostgreSQL (1.2 ms per sentence), PostgreSQL 16.16
 
 Strict = identical span boundaries; Loose = at least one token overlap.
 
@@ -10,9 +10,9 @@ Strict = identical span boundaries; Loose = at least one token overlap.
 
 | Subset | Gold spans | Predicted | Strict P | Strict R | Strict F1 | Loose P | Loose R | Loose F1 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| All spans | 2,265 | 1,279 | 0.309 | 0.174 | **0.223** | 0.532 | 0.293 | **0.378** |
-| house | 1,019 | 548 | 0.212 | 0.114 | **0.148** | 0.436 | 0.227 | **0.298** |
-| tech | 1,246 | 731 | 0.382 | 0.224 | **0.282** | 0.603 | 0.348 | **0.441** |
+| All spans | 2,265 | 1,066 | 0.356 | 0.168 | **0.228** | 0.609 | 0.281 | **0.384** |
+| house | 1,019 | 436 | 0.248 | 0.106 | **0.148** | 0.511 | 0.214 | **0.302** |
+| tech | 1,246 | 630 | 0.432 | 0.218 | **0.290** | 0.676 | 0.335 | **0.448** |
 
 ## Per span type
 
@@ -20,8 +20,8 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 
 | Type | Gold spans | Predicted | Strict P | Strict R | Strict F1 | Loose P | Loose R | Loose F1 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| skill | 1,091 | 169 | 0.053 | 0.008 | **0.014** | 0.302 | 0.046 | **0.080** |
-| knowledge | 1,174 | 1,110 | 0.329 | 0.311 | **0.320** | 0.455 | 0.419 | **0.436** |
+| skill | 1,091 | 112 | 0.080 | 0.008 | **0.015** | 0.366 | 0.037 | **0.067** |
+| knowledge | 1,174 | 954 | 0.367 | 0.298 | **0.329** | 0.512 | 0.405 | **0.452** |
 
 ## Most frequent correct matches
 
@@ -36,32 +36,32 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 | agile -> ICT project management methodologies | 13 |
 | Python -> Python | 10 |
 | python -> Python | 10 |
-| NET -> LabOne NET | 9 |
-| SQL -> SoftRisk Technologies SoftRisk SQL | 9 |
-| C# -> C# | 9 |
+| SQL -> Structured query language SQL | 9 |
+| NET -> Visual Basic | 9 |
 | net -> Visual Basic | 8 |
-| stay focused -> stay alert | 7 |
 | React -> React | 7 |
+| DevOps -> DevOps | 7 |
+| javascript -> JavaScript | 6 |
 
 ## Most frequent false positives (no overlap with any gold span)
 
 | Prediction | Count |
 | --- | --- |
-| Danish -> Danish | 23 |
 | design -> Design | 13 |
 | English -> English | 13 |
 | energy -> energy | 12 |
-| pregnancy -> pregnancy | 10 |
-| Plan -> plan | 10 |
 | Java -> Oracle Java | 9 |
 | DevOps -> DevOps | 9 |
-| creative solutions -> design thinking | 8 |
-| plan -> plan | 8 |
 | lead -> lead others | 8 |
 | agile -> ICT project management methodologies | 8 |
 | communication -> communication | 8 |
-| email -> electronic communication | 8 |
-| transport -> logistics | 7 |
+| programming languages -> Programming languages | 6 |
+| Android -> Google Android | 6 |
+| science -> Science | 6 |
+| wind turbines -> types of wind turbines | 6 |
+| machine learning -> machine learning | 5 |
+| source -> Source (digital game creation systems) | 5 |
+| UX -> SugarCRM Sugar UX | 5 |
 
 ## Most frequent missed gold spans
 
@@ -71,6 +71,7 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 | automation | 11 |
 | reactjs | 9 |
 | development | 9 |
+| C# | 9 |
 | testing | 9 |
 | Financial Technology | 8 |
 | cloud | 8 |
@@ -81,7 +82,6 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 | apply your depth of knowledge and expertise | 7 |
 | partner continuously with your many stakeholders | 7 |
 | achieve organizational goals | 7 |
-| building an innovative culture | 7 |
 
 ## Reading these results
 

@@ -375,8 +375,10 @@ def main() -> None:
             conn.execute((ROOT / "sql" / name).read_text(encoding="utf-8"))
             conn.commit()
 
-        print("          Loading curated prerequisites and demo learner ...")
+        print("          Loading curated prerequisites, lexicon blocklist and demo learner ...")
         build_notes = load_curated_prerequisites(conn) + seed_demo_learner(conn)
+        from tune_lexicon import load_blocklist
+        build_notes.append(f"{load_blocklist(conn)} lexicon labels blocked (learned on SkillSpan train)")
 
         print("          Self-tests and report ...")
         tests = self_tests(conn)

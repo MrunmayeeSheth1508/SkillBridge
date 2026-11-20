@@ -123,8 +123,20 @@ FROM cand
 WHERE alias IS NOT NULL AND length(alias) >= 2
   AND lower(alias) NOT IN ('word', 'access', 'project', 'teams', 'office', 'outlook', 'go', 'edge',
                            'one', 'cloud', 'web', 'data', 'analytics', 'mail', 'sheets', 'docs',
-                           'drive', 'forms', 'search', 'maps', 'it', 'pay', 'business', 'help', 'bi')
+                           'drive', 'forms', 'search', 'maps', 'it', 'pay', 'business', 'help', 'bi', 'net')
 ON CONFLICT (skill_id, alias) DO NOTHING;
+
+-- ---------------------------------------------------------------------
+-- Lexicon pruning learned on the SkillSpan TRAIN split (scripts/tune_lexicon.py):
+-- labels that were mostly false positives on train are excluded.
+-- Kept in data/curated/lexicon_blocklist.csv and re-loaded by the build.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS core.lexicon_blocklist (
+    alias_norm      TEXT PRIMARY KEY,
+    train_matches   INTEGER NOT NULL,
+    train_precision NUMERIC(4,3) NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- ---------------------------------------------------------------------
 -- The lexicon (materialized view = precomputed, indexed matching table)
@@ -133,7 +145,12 @@ DROP MATERIALIZED VIEW IF EXISTS core.mv_skill_lexicon;
 CREATE MATERIALIZED VIEW core.mv_skill_lexicon AS
 WITH base AS (
     SELECT a.skill_id, a.alias, a.alias_type, k.taxonomy, k.skill_type,
-           (a.alias_type = 'derived' OR (k.taxonomy = 'onet_technology' AND length(a.alias) <= 3)) AS case_sensitive
+           (a.alias_type = 'derived'
+            OR (k.taxonomy = 'onet_technology'
+                AND (length(a.alias) = 1
+                     OR lower(a.alias) IN ('go', 'pig', 'ant', 'ada', 'box', 'vi', 'chef', 'salt',
+                                           'hive', 'puppet', 'make', 'dart', 'rust', 'swift', 'elm'))))
+           AS case_sensitive
     FROM core.skill_aliases a
     JOIN core.skills k ON k.skill_id = a.skill_id
     WHERE a.alias_type IN ('preferred', 'alternative', 'derived', 'manual')
@@ -142,13 +159,20 @@ WITH base AS (
 normed AS (
     SELECT b.*, core.fn_norm(b.alias) AS alias_norm, core.fn_cased(b.alias) AS alias_cased
     FROM base b
+),
+popularity AS (   -- careers that require the skill: used to link ambiguous labels
+    SELECT skill_id, COUNT(DISTINCT career_id) AS n_careers
+    FROM core.career_skill_evidence GROUP BY skill_id
 )
 SELECT skill_id, alias, alias_type, taxonomy, skill_type, case_sensitive, alias_norm, alias_cased,
        array_length(string_to_array(alias_norm, ' '), 1) AS n_tokens,
        CASE taxonomy WHEN 'onet_technology' THEN 1 WHEN 'onet_skill' THEN 2
-                     WHEN 'onet_knowledge'  THEN 3 ELSE 4 END AS priority
+                     WHEN 'onet_knowledge'  THEN 3 ELSE 4 END AS priority,
+       COALESCE(p.n_careers, 0) AS popularity
 FROM normed
+LEFT JOIN popularity p USING (skill_id)
 WHERE alias_norm <> ''
+  AND alias_norm NOT IN (SELECT alias_norm FROM core.lexicon_blocklist)
   AND array_length(string_to_array(alias_norm, ' '), 1) <= 6
   AND (case_sensitive
        OR (length(alias_norm) >= 3 AND NOT (alias_norm = ANY (core.fn_stopwords()))));
@@ -202,14 +226,15 @@ BEGIN
               AND NOT (last_n  = ANY (core.fn_stopwords()))
         ),
         m AS (
-            SELECT g2.s, g2.e, g2.l, x.skill_id, 'exact'::TEXT AS method, 1.0::NUMERIC AS score, x.priority
+            SELECT g2.s, g2.e, g2.l, x.skill_id, 'exact'::TEXT AS method, 1.0::NUMERIC AS score,
+                   x.priority, x.popularity
             FROM g2 JOIN core.mv_skill_lexicon x ON NOT x.case_sensitive AND x.alias_norm = g2.ng
             UNION ALL
-            SELECT g2.s, g2.e, g2.l, x.skill_id, 'exact', 1.0, x.priority
+            SELECT g2.s, g2.e, g2.l, x.skill_id, 'exact', 1.0, x.priority, x.popularity
             FROM g2 JOIN core.mv_skill_lexicon x ON x.case_sensitive AND x.alias_cased = g2.ngc
             UNION ALL
             SELECT g2.s, g2.e, g2.l, x.skill_id, 'fuzzy',
-                   ROUND(similarity(x.alias_norm, g2.ng)::NUMERIC, 3), x.priority
+                   ROUND(similarity(x.alias_norm, g2.ng)::NUMERIC, 3), x.priority, x.popularity
             FROM g2 JOIN core.mv_skill_lexicon x
               ON p_fuzzy AND g2.l >= 2 AND length(g2.ng) >= 8
              AND NOT x.case_sensitive AND x.n_tokens >= 2
@@ -218,7 +243,7 @@ BEGIN
         )
         SELECT m.s, m.e, m.skill_id, m.method, m.score
         FROM m
-        ORDER BY m.l DESC, (m.method = 'exact') DESC, m.score DESC, m.priority, m.skill_id
+        ORDER BY m.l DESC, (m.method = 'exact') DESC, m.score DESC, m.priority, m.popularity DESC, m.skill_id
     LOOP
         -- longest-match-first: keep a match only if none of its tokens is taken
         IF NOT (TRUE = ANY (covered[r.s:r.e])) THEN

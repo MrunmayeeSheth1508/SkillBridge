@@ -116,6 +116,8 @@ def main() -> None:
         rows = cur.fetchall()
         cur.execute("SELECT version()")
         pg_version = cur.fetchone()[0].split(",")[0]
+        cur.execute("SELECT (SELECT COUNT(*) FROM core.mv_skill_lexicon), (SELECT COUNT(*) FROM core.lexicon_blocklist)")
+        n_lex, n_block = cur.fetchone()
     elapsed = time.time() - t0
 
     preds_by_sent: dict[int, list] = defaultdict(list)
@@ -162,7 +164,8 @@ def main() -> None:
         "# SkillBridge skill extraction - SkillSpan evaluation", "",
         f"- Split: **{args.split}**, sentences: **{len(sentences):,}**"
         + (f" (first {args.limit})" if args.limit else ""),
-        f"- Matching: **{mode}**, lexicon `core.mv_skill_lexicon` (O*NET + ESCO aliases)",
+        f"- Matching: **{mode}**, lexicon `core.mv_skill_lexicon`: {n_lex:,} O*NET + ESCO labels, "
+        f"{n_block} pruned using the train split",
         f"- Runtime: **{elapsed:.1f} s** inside PostgreSQL "
         f"({1000 * elapsed / max(len(sentences), 1):.1f} ms per sentence), {pg_version}",
         "", "Strict = identical span boundaries; Loose = at least one token overlap.", "",

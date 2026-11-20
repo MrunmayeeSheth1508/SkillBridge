@@ -16,7 +16,7 @@ INSERT INTO core.model_parameters (param_name, param_value, description) VALUES
  ('transfer_required_threshold', 0.60, 'O*NET importance at which a skill counts as required for P(b|a)'),
  ('transfer_min_support',        5,    'A skill must be required by at least this many careers'),
  ('gap_min_importance',          0.25, 'Scored skills/knowledge below this importance are not shown as gaps'),
- ('gap_min_importance_tech',     0.80, 'Technologies below this prior (i.e. not Hot/In Demand) are not shown'),
+ ('gap_min_importance_tech',     0.90, 'Technologies below this prior (i.e. not Hot/In Demand) are not shown'),
  ('roadmap_min_gap',             0.05, 'Gaps smaller than this are not put in a roadmap'),
  ('roadmap_max_skills',          12,   'Maximum target skills per roadmap (before prerequisites)'),
  ('prereq_mastery',              0.50, 'A prerequisite with effective proficiency below this is added to the plan'),
