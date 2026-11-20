@@ -105,8 +105,17 @@ WITH base AS (
     SELECT skill_id, regexp_replace(name, '\s+software$', '', 'i') AS nm
     FROM core.skills WHERE taxonomy = 'onet_technology'
 ),
+acr AS (   -- trailing acronym + the words before it
+    SELECT skill_id, substring(nm FROM '\s([A-Z]{2,6})$') AS a,
+           lower(regexp_replace(regexp_replace(nm, '\s[A-Z]{2,6}$', ''), '[^A-Za-z]', '', 'g')) AS words
+    FROM base
+),
 cand AS (
-    SELECT skill_id, substring(nm FROM '\s([A-Z][A-Z0-9+#]{1,6})$') AS alias FROM base
+    -- keep an acronym only if it abbreviates the words before it: its letters appear
+    -- in order, starting with the first letter ("Structured query language SQL" -> SQL,
+    -- "Hypertext markup language HTML" -> HTML), but not "SugarCRM Sugar UX" -> UX
+    SELECT skill_id, a AS alias FROM acr
+    WHERE a IS NOT NULL AND words ~ ('^' || regexp_replace(lower(a), '(.)', '\1.*', 'g'))
     UNION
     SELECT skill_id, regexp_replace(nm,
         '^(Microsoft|Autodesk|Adobe|Oracle|IBM|SAP|Google|Amazon|Apache|Atlassian|Salesforce|'
@@ -172,10 +181,11 @@ SELECT skill_id, alias, alias_type, taxonomy, skill_type, case_sensitive, alias_
 FROM normed
 LEFT JOIN popularity p USING (skill_id)
 WHERE alias_norm <> ''
-  AND alias_norm NOT IN (SELECT alias_norm FROM core.lexicon_blocklist)
   AND array_length(string_to_array(alias_norm, ' '), 1) <= 6
   AND (case_sensitive
-       OR (length(alias_norm) >= 3 AND NOT (alias_norm = ANY (core.fn_stopwords()))));
+       OR (length(alias_norm) >= 3 AND NOT (alias_norm = ANY (core.fn_stopwords())))
+       OR (taxonomy = 'onet_technology' AND length(alias_norm) >= 2))   -- C#, Qt ...
+  AND alias_norm NOT IN (SELECT alias_norm FROM core.lexicon_blocklist);
 
 CREATE INDEX mv_skill_lexicon_norm  ON core.mv_skill_lexicon (alias_norm) WHERE NOT case_sensitive;
 CREATE INDEX mv_skill_lexicon_cased ON core.mv_skill_lexicon (alias_cased) WHERE case_sensitive;

@@ -1,6 +1,6 @@
 # SkillBridge core database build report
 
-Build time: 127 s
+Build time: 132 s
 
 ## Integrity self-tests
 
@@ -17,7 +17,7 @@ Build time: 127 s
 | Transfer credit never lowers readiness | yes | Logistics Analysts: baseline 0.1269, transfer-aware 0.2585 |
 | Gap values consistent (0 <= gap <= importance) | yes | 0 inconsistent rows |
 | Roadmap respects prerequisites | yes | 13 items, 358.5 h, 45 weeks at 8 h/week, 0 violations |
-| Skill extraction finds skills in a job ad | yes | lexicon 101,575 labels; found: Python, Structured query language SQL, Scikit-learn, Mathem |
+| Skill extraction finds skills in a job ad | yes | lexicon 100,697 labels; found: Python, Structured query language SQL, Scikit-learn, Mathem |
 | Approved extraction becomes Job-postings evidence (trigger) | yes | 1 evidence row(s) |
 | RLS: learner sees only own skills | yes | table holds 2 learners' skills; learner role sees 1 |
 | Learner cannot read password hashes | yes | permission denied for table users |
@@ -27,7 +27,7 @@ Build time: 127 s
 
 - 38 prerequisite edges loaded
 - demo learner user_id=1
-- 0 lexicon labels blocked (learned on SkillSpan train)
+- 56 lexicon labels blocked (learned on SkillSpan train)
 
 ## Rows per core table
 
@@ -40,13 +40,13 @@ Build time: 127 s
 | extraction_candidates | 0 |
 | gap_snapshots | 0 |
 | learning_resources | 0 |
-| lexicon_blocklist | 0 |
+| lexicon_blocklist | 56 |
 | model_parameters | 24 |
-| mv_skill_lexicon | 101575 |
+| mv_skill_lexicon | 100697 |
 | resource_skills | 0 |
 | roadmap_items | 0 |
 | roadmaps | 0 |
-| skill_aliases | 111619 |
+| skill_aliases | 110797 |
 | skill_prerequisites | 38 |
 | skill_similarity | 21699 |
 | skills | 22796 |

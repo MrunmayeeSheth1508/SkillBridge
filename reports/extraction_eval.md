@@ -1,8 +1,8 @@
 # SkillBridge skill extraction - SkillSpan evaluation
 
 - Split: **test**, sentences: **3,569**
-- Matching: **exact**, lexicon `core.mv_skill_lexicon`: 101,512 O*NET + ESCO labels, 56 pruned using the train split
-- Runtime: **4.1 s** inside PostgreSQL (1.2 ms per sentence), PostgreSQL 16.16
+- Matching: **exact**, lexicon `core.mv_skill_lexicon`: 100,697 O*NET + ESCO labels, 53 pruned using the train split
+- Runtime: **3.0 s** inside PostgreSQL (0.8 ms per sentence), PostgreSQL 16.16
 
 Strict = identical span boundaries; Loose = at least one token overlap.
 
@@ -10,9 +10,9 @@ Strict = identical span boundaries; Loose = at least one token overlap.
 
 | Subset | Gold spans | Predicted | Strict P | Strict R | Strict F1 | Loose P | Loose R | Loose F1 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| All spans | 2,265 | 1,066 | 0.356 | 0.168 | **0.228** | 0.609 | 0.281 | **0.384** |
-| house | 1,019 | 436 | 0.248 | 0.106 | **0.148** | 0.511 | 0.214 | **0.302** |
-| tech | 1,246 | 630 | 0.432 | 0.218 | **0.290** | 0.676 | 0.335 | **0.448** |
+| All spans | 2,265 | 1,045 | 0.371 | 0.171 | **0.234** | 0.615 | 0.280 | **0.385** |
+| house | 1,019 | 423 | 0.248 | 0.103 | **0.146** | 0.508 | 0.208 | **0.295** |
+| tech | 1,246 | 622 | 0.455 | 0.227 | **0.303** | 0.688 | 0.339 | **0.455** |
 
 ## Per span type
 
@@ -21,7 +21,7 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 | Type | Gold spans | Predicted | Strict P | Strict R | Strict F1 | Loose P | Loose R | Loose F1 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | skill | 1,091 | 112 | 0.080 | 0.008 | **0.015** | 0.366 | 0.037 | **0.067** |
-| knowledge | 1,174 | 954 | 0.367 | 0.298 | **0.329** | 0.512 | 0.405 | **0.452** |
+| knowledge | 1,174 | 933 | 0.385 | 0.306 | **0.341** | 0.523 | 0.409 | **0.459** |
 
 ## Most frequent correct matches
 
@@ -38,10 +38,10 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 | python -> Python | 10 |
 | SQL -> Structured query language SQL | 9 |
 | NET -> Visual Basic | 9 |
+| C# -> C# | 9 |
 | net -> Visual Basic | 8 |
+| c# -> C# | 8 |
 | React -> React | 7 |
-| DevOps -> DevOps | 7 |
-| javascript -> JavaScript | 6 |
 
 ## Most frequent false positives (no overlap with any gold span)
 
@@ -61,7 +61,7 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 | wind turbines -> types of wind turbines | 6 |
 | machine learning -> machine learning | 5 |
 | source -> Source (digital game creation systems) | 5 |
-| UX -> SugarCRM Sugar UX | 5 |
+| Dynamics -> Microsoft Dynamics | 5 |
 
 ## Most frequent missed gold spans
 
@@ -71,17 +71,17 @@ Technologies from O*NET are counted as *knowledge*, matching SkillSpan's guideli
 | automation | 11 |
 | reactjs | 9 |
 | development | 9 |
-| C# | 9 |
 | testing | 9 |
 | Financial Technology | 8 |
 | cloud | 8 |
-| c# | 8 |
 | qa | 8 |
 | teaching | 8 |
 | solving business problems | 7 |
 | apply your depth of knowledge and expertise | 7 |
 | partner continuously with your many stakeholders | 7 |
 | achieve organizational goals | 7 |
+| building an innovative culture | 7 |
+| software development lifecycle | 6 |
 
 ## Reading these results
 
