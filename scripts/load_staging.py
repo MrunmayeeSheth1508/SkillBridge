@@ -27,8 +27,24 @@ import zipfile
 from pathlib import Path
 
 import pandas as pd
-import psycopg
 from dotenv import load_dotenv
+
+
+def _add_postgres_bin_to_path() -> None:
+    """Windows: let psycopg find PostgreSQL's own (signed) libpq.dll, so it
+    works even when the PATH change has not reached this terminal."""
+    if os.name != "nt":
+        return
+    import glob
+    for bin_dir in sorted(glob.glob(r"C:\Program Files\PostgreSQL\*\bin"), reverse=True):
+        if os.path.exists(os.path.join(bin_dir, "libpq.dll")):
+            if bin_dir.lower() not in os.environ.get("PATH", "").lower():
+                os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+            return
+
+
+_add_postgres_bin_to_path()
+import psycopg  # noqa: E402  (must come after the PATH fix)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_SQL = PROJECT_ROOT / "sql" / "01_staging_schema.sql"
@@ -482,6 +498,16 @@ def run_checks(conn: psycopg.Connection) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+def get_database_url() -> str:
+    load_dotenv(PROJECT_ROOT / ".env")
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        sys.exit("DATABASE_URL is not set. Create a .env file in the project root.")
+    if "YOUR_PASSWORD" in url:
+        sys.exit(".env still contains the placeholder YOUR_PASSWORD - put your real password in.")
+    return url
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("usage: python scripts/load_staging.py <raw_data_dir>")
@@ -489,10 +515,7 @@ def main() -> None:
     if not raw_dir.is_dir():
         sys.exit(f"Folder not found: {raw_dir}")
 
-    load_dotenv(PROJECT_ROOT / ".env")
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        sys.exit("DATABASE_URL is not set. Create a .env file in the project root.")
+    url = get_database_url()
 
     print("Reading source files ...")
     files, notes = collect_sources(raw_dir)
