@@ -1,6 +1,6 @@
 # SkillBridge core database build report
 
-Build time: 44 s
+Build time: 104 s
 
 ## Integrity self-tests
 
@@ -13,6 +13,20 @@ Build time: 44 s
 | Proficiency 1.5 rejected | yes | new row for relation "user_skills" violates check constraint "user_skills_proficiency_chec |
 | Duplicate evidence from the same source rejected | yes | duplicate key value violates unique constraint "career_skill_evidence_career_id_skill_id_s |
 | Proficiency history recorded (insert + update) | yes | 2 history rows |
+| Directional transfer edges built | yes | 9204 edges; 2310 have a different weight in the reverse direction |
+| Transfer credit never lowers readiness | yes | Logistics Analysts: baseline 0.0960, transfer-aware 0.2089 |
+| Gap values consistent (0 <= gap <= importance) | yes | 0 inconsistent rows |
+| Roadmap respects prerequisites | yes | 13 items, 327.7 h, 41 weeks at 8 h/week, 0 violations |
+| Skill extraction finds skills in a job ad | yes | lexicon 101,578 labels; found: Python, SoftRisk Technologies SoftRisk SQL, Scikit-learn, M |
+| Approved extraction becomes Job-postings evidence (trigger) | yes | 1 evidence row(s) |
+| RLS: learner sees only own skills | yes | table holds 2 learners' skills; learner role sees 1 |
+| Learner cannot read password hashes | yes | permission denied for table users |
+| Learner cannot change evidence | yes | permission denied for table career_skill_evidence |
+
+## Build notes
+
+- 38 prerequisite edges loaded
+- demo learner user_id=1
 
 ## Rows per core table
 
@@ -25,17 +39,18 @@ Build time: 44 s
 | extraction_candidates | 0 |
 | gap_snapshots | 0 |
 | learning_resources | 0 |
-| model_parameters | 9 |
+| model_parameters | 24 |
+| mv_skill_lexicon | 101578 |
 | resource_skills | 0 |
 | roadmap_items | 0 |
 | roadmaps | 0 |
-| skill_aliases | 109772 |
-| skill_prerequisites | 0 |
-| skill_similarity | 12495 |
+| skill_aliases | 111620 |
+| skill_prerequisites | 38 |
+| skill_similarity | 21699 |
 | skills | 22796 |
-| user_skill_history | 0 |
-| user_skills | 0 |
-| users | 0 |
+| user_skill_history | 17 |
+| user_skills | 17 |
+| users | 3 |
 
 ## Careers by source
 
@@ -72,6 +87,7 @@ Build time: 44 s
 | esco_relation_essential | 189 |
 | esco_relation_optional | 5628 |
 | exact_label | 238 |
+| transfer_v0 | 9204 |
 
 ## Target careers (4 domains)
 

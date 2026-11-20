@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SkillBridge · Skill Gap & Learning Roadmap</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Cpath d=%27M4 34 Q24 6 44 34 M4 34 H44%27 fill=%27none%27 stroke=%27%237a5a50%27 stroke-width=%275%27 stroke-linecap=%27round%27/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+<div class="bg-glow"></div>
+
+<!-- ============================ HEADER ============================ -->
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#d8a89f"/><stop offset="1" stop-color="#7a5a50"/></linearGradient></defs>
+      <path d="M4 34 Q24 6 44 34" fill="none" stroke="url(#lg)" stroke-width="4" stroke-linecap="round"/>
+      <path d="M4 34 H44" stroke="url(#lg)" stroke-width="4" stroke-linecap="round"/>
+      <path d="M14 34 V24 M24 34 V19 M34 34 V24" stroke="url(#lg)" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="brand-name">SkillBridge</div>
+      <div class="brand-tag">Evidence-aware · Transfer-aware · Prerequisite-valid</div>
+    </div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="live"><span class="dot"></span>PostgreSQL · live</div>
+</header>
+
+<div class="layout">
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside class="sidebar">
+    <section class="card profile">
+      <div class="profile-head">
+        <div class="avatar" id="avatar">DL</div>
+        <div>
+          <div class="profile-name" id="profileName">Demo Learner</div>
+          <div class="muted small">Mechanical engineer exploring a career move</div>
+        </div>
+      </div>
+      <label class="field-label">Weekly study budget <span class="mono" id="hoursLabel">8 h</span></label>
+      <input type="range" id="hours" min="2" max="40" step="1" value="8">
+    </section>
+
+    <section class="card">
+      <div class="card-title-row">
+        <h3>Your skills</h3>
+        <button class="ghost small-btn" id="resetBtn" title="Restore the demo profile">Reset</button>
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="skillSearch" placeholder="Add a skill, knowledge area or tool…" autocomplete="off">
+        <div class="dropdown" id="skillResults"></div>
+      </div>
+      <div class="legend-row">
+        <span class="chip t-skill">Skill</span><span class="chip t-knowledge">Knowledge</span><span class="chip t-technology">Tool</span>
+      </div>
+      <div id="mySkills" class="my-skills"></div>
+    </section>
+  </aside>
+
+  <!-- ============================ MAIN ============================ -->
+  <main class="main">
+    <!-- Career picker -->
+    <section class="card">
+      <div class="card-title-row">
+        <h3>Target career</h3>
+        <div class="search-wrap compact">
+          <input type="text" id="careerSearch" placeholder="Search any of 900+ careers…" autocomplete="off">
+          <div class="dropdown" id="careerResults"></div>
+        </div>
+      </div>
+      <div class="tabs" id="domainTabs"></div>
+      <div class="pills" id="careerPills"></div>
+    </section>
+
+    <!-- Hero -->
+    <section class="hero" id="hero">
+      <div class="hero-title">
+        <div class="eyebrow" id="careerDomain">—</div>
+        <h1 id="careerTitle">Select a career</h1>
+        <p class="muted" id="careerDesc"></p>
+      </div>
+      <div class="kpis">
+        <div class="kpi">
+          <div class="ring" id="ringBase"></div>
+          <div class="kpi-label">Baseline readiness<span class="muted">exact skills only</span></div>
+        </div>
+        <div class="kpi accent">
+          <div class="ring" id="ringTransfer"></div>
+          <div class="kpi-label">Transfer-aware readiness<span class="muted">with directional credit</span></div>
+        </div>
+        <div class="kpi stat">
+          <div class="big mono" id="lift">+0</div>
+          <div class="kpi-label">points from transferable skills<span class="muted" id="liftNote"></span></div>
+        </div>
+        <div class="kpi stat">
+          <div class="big mono" id="reqCount">0</div>
+          <div class="kpi-label">requirements analysed<span class="muted" id="reqNote"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gap analysis -->
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-title-row">
+          <h3>Skill profile vs requirement</h3>
+          <span class="muted small">Top gaps · 0–1 scale</span>
+        </div>
+        <div class="chart-box"><canvas id="radar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title-row">
+          <h3>Biggest gaps</h3>
+          <div class="seg" id="typeFilter">
+            <button data-t="all" class="on">All</button><button data-t="skill">Skills</button>
+            <button data-t="knowledge">Knowledge</button><button data-t="technology">Tools</button>
+          </div>
+        </div>
+        <div class="gap-legend"><span><i class="sw base"></i>Without transfer</span><span><i class="sw now"></i>With transfer credit</span><span class="muted">Click a row for the full explanation</span></div>
+        <div id="gapList" class="gap-list"></div>
+      </div>
+    </section>
+
+    <!-- Roadmap -->
+    <section class="card">
+      <div class="card-title-row">
+        <h3>Learning roadmap</h3>
+        <div class="controls">
+          <label class="toggle"><input type="checkbox" id="useTransfer" checked><span></span>Use transfer credit</label>
+          <button class="primary" id="buildRoadmap">Generate roadmap</button>
+        </div>
+      </div>
+      <div id="roadmapSummary" class="rm-summary"></div>
+      <div id="roadmap" class="gantt"><div class="empty">Generate a prerequisite-valid plan that fits your weekly hours.</div></div>
+    </section>
+
+    <!-- NLP: job description analyser -->
+    <section class="card" id="nlp">
+      <div class="card-title-row">
+        <div>
+          <h3>Job description analyser</h3>
+          <div class="muted small">Extract skills inside PostgreSQL → review as admin → approved skills become <b>Job postings</b> evidence</div>
+        </div>
+        <div class="controls">
+          <label class="toggle"><input type="checkbox" id="useFuzzy" checked><span></span>Fuzzy matching</label>
+          <button class="ghost small-btn" id="loadExample">Load example</button>
+          <button class="primary" id="extractBtn">Extract skills</button>
+        </div>
+      </div>
+      <div class="nlp-target muted small">Evidence will be added to: <b id="nlpCareer">—</b></div>
+      <textarea id="jobText" rows="6" placeholder="Paste a job description for the selected career…"></textarea>
+      <div class="nlp-grid" id="nlpResult" hidden>
+        <div>
+          <div class="nlp-sub">Detected in text</div>
+          <div class="nlp-text" id="nlpText"></div>
+          <div class="nlp-legend"><span class="hl t-skill">Skill</span><span class="hl t-knowledge">Knowledge</span><span class="hl t-technology">Tool</span><span class="muted small">· dashed = fuzzy match</span></div>
+        </div>
+        <div>
+          <div class="nlp-sub">Review queue <span class="muted" id="nlpCounts"></span>
+            <span class="nlp-bulk"><button class="ghost small-btn" id="approveAll">Approve all exact</button></span>
+          </div>
+          <div class="cand-list" id="candList"></div>
+        </div>
+      </div>
+      <div id="postingEvidence"></div>
+    </section>
+
+    <!-- Where am I closest + compare -->
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-title-row"><h3>Where are you closest?</h3><span class="muted small">All target careers</span></div>
+        <div class="chart-box tall"><canvas id="rankChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title-row">
+          <h3>Compare careers</h3>
+          <select id="compareSelect"></select>
+        </div>
+        <div id="compare" class="compare"></div>
+      </div>
+    </section>
+
+    <footer class="foot muted small">
+      SkillBridge prototype · O*NET and ESCO v1.2.1 data · all scoring runs inside PostgreSQL
+      (<span class="mono">fn_gap_analysis</span>, <span class="mono">fn_build_roadmap</span>) · λ = <span class="mono" id="lambdaFoot">0.8</span>
+    </footer>
+  </main>
+</div>
+
+<!-- ============================ EXPLANATION DRAWER ============================ -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="close" id="closeDrawer" aria-label="Close">×</button>
+  <div id="drawerBody"></div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

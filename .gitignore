@@ -1,4 +1,5 @@
 .venv/
-data/
+data/raw/
+data/staging/
 .env
 __pycache__/

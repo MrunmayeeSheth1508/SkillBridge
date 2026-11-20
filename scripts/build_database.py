@@ -25,9 +25,113 @@ import load_staging as ls  # also fixes the Windows libpq PATH before importing 
 
 import psycopg  # noqa: E402
 
+import csv  # noqa: E402
+
 ROOT = ls.PROJECT_ROOT
-SQL_FILES = ["02_core_schema.sql", "03_transform.sql", "04_views.sql"]
+SQL_FILES = ["02_core_schema.sql", "03_transform.sql", "04_views.sql", "05_analytics.sql",
+             "06_nlp.sql", "07_security.sql"]
 CORE_REPORT = ROOT / "reports" / "core_build.md"
+CURATED_DIR = ROOT / "data" / "curated"
+
+# Demo learner: a mechanical engineer moving towards data careers.
+# (taxonomy, name or ILIKE pattern, proficiency)
+DEMO_EMAIL = "demo@skillbridge.local"
+DEMO_SKILLS = [
+    ("onet_knowledge", "Mathematics", 0.80),
+    ("onet_knowledge", "Physics", 0.80),
+    ("onet_knowledge", "Engineering and Technology", 0.85),
+    ("onet_knowledge", "Design", 0.60),
+    ("onet_skill", "Mathematics", 0.75),
+    ("onet_skill", "Critical Thinking", 0.80),
+    ("onet_skill", "Complex Problem Solving", 0.75),
+    ("onet_skill", "Science", 0.60),
+    ("onet_skill", "Reading Comprehension", 0.80),
+    ("onet_skill", "Judgment and Decision Making", 0.60),
+    ("onet_skill", "Operations Analysis", 0.50),
+    ("onet_technology", "Microsoft Excel", 0.70),
+    ("onet_technology", "%MATLAB%", 0.60),
+    ("onet_technology", "%AutoCAD%", 0.70),
+    ("onet_technology", "%SolidWorks%", 0.60),
+]
+
+
+def find_skill(cur, taxonomy: str, name: str) -> int | None:
+    """Exact (case-insensitive) name match first, then ILIKE pattern, shortest name wins."""
+    cur.execute("SELECT skill_id FROM core.skills WHERE taxonomy = %s AND lower(name) = lower(%s) LIMIT 1",
+                (taxonomy, name.strip("%")))
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    pattern = name if "%" in name else f"%{name}%"
+    cur.execute("SELECT skill_id FROM core.skills WHERE taxonomy = %s AND name ILIKE %s "
+                "ORDER BY length(name) LIMIT 1", (taxonomy, pattern))
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def load_curated_prerequisites(conn) -> list[str]:
+    """Load data/curated/prerequisites.csv through the cycle-checking trigger."""
+    notes: list[str] = []
+    path = CURATED_DIR / "prerequisites.csv"
+    if not path.exists():
+        return [f"{path.relative_to(ROOT)} not found - no prerequisites loaded"]
+    cur = conn.cursor()
+    loaded = 0
+    with path.open(encoding="utf-8") as f:
+        for i, row in enumerate(csv.DictReader(f), start=2):
+            pre = find_skill(cur, row["prerequisite_taxonomy"], row["prerequisite"])
+            skl = find_skill(cur, row["skill_taxonomy"], row["skill"])
+            if pre is None or skl is None:
+                missing = row["prerequisite"] if pre is None else row["skill"]
+                notes.append(f"prerequisites.csv line {i}: skill not found -> {missing}")
+                continue
+            cur.execute("SAVEPOINT p")
+            try:
+                cur.execute("INSERT INTO core.skill_prerequisites (skill_id, prereq_skill_id, note) "
+                            "VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                            (skl, pre, row.get("note") or None))
+                loaded += cur.rowcount
+                cur.execute("RELEASE SAVEPOINT p")
+            except psycopg.Error as exc:
+                cur.execute("ROLLBACK TO SAVEPOINT p")
+                notes.append(f"prerequisites.csv line {i} rejected: {str(exc).splitlines()[0]}")
+    conn.commit()
+    notes.insert(0, f"{loaded} prerequisite edges loaded")
+    return notes
+
+
+def seed_demo_learner(conn) -> list[str]:
+    cur = conn.cursor()
+    cur.execute("""INSERT INTO core.users (full_name, email, password_hash, role, weekly_hours)
+                   VALUES ('Demo Learner', %s, 'demo-account-no-login', 'learner', 8)
+                   ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name
+                   RETURNING user_id""", (DEMO_EMAIL,))
+    uid = cur.fetchone()[0]
+    cur.execute("DELETE FROM core.user_skills WHERE user_id = %s", (uid,))
+    notes = []
+    for taxonomy, name, p in DEMO_SKILLS:
+        sid = find_skill(cur, taxonomy, name)
+        if sid is None:
+            notes.append(f"demo skill not found: {name}")
+            continue
+        cur.execute("INSERT INTO core.user_skills (user_id, skill_id, proficiency) VALUES (%s,%s,%s) "
+                    "ON CONFLICT (user_id, skill_id) DO UPDATE SET proficiency = EXCLUDED.proficiency",
+                    (uid, sid, p))
+    cur.execute("INSERT INTO core.users (full_name, email, password_hash, role) "
+                "VALUES ('Administrator', 'admin@skillbridge.local', 'set-via-app', 'admin') "
+                "ON CONFLICT (email) DO NOTHING")
+    # A second learner, so row-level security has someone else's data to hide
+    cur.execute("INSERT INTO core.users (full_name, email, password_hash, role, weekly_hours) "
+                "VALUES ('Second Learner', 'learner2@skillbridge.local', 'demo-account-no-login', 'learner', 5) "
+                "ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name RETURNING user_id")
+    uid2 = cur.fetchone()[0]
+    for taxonomy, name, p in [("onet_skill", "Programming", 0.7), ("onet_technology", "Python", 0.8)]:
+        sid = find_skill(cur, taxonomy, name)
+        if sid is not None:
+            cur.execute("INSERT INTO core.user_skills (user_id, skill_id, proficiency) VALUES (%s,%s,%s) "
+                        "ON CONFLICT (user_id, skill_id) DO NOTHING", (uid2, sid, p))
+    conn.commit()
+    return [f"demo learner user_id={uid}"] + notes
 
 SUMMARY_QUERIES: list[tuple[str, str]] = [
     ("Rows per core table", """
@@ -127,6 +231,113 @@ def self_tests(conn: psycopg.Connection) -> list[tuple[str, bool, str]]:
     return results
 
 
+def analytics_tests(conn) -> list[tuple[str, bool, str]]:
+    """Check the Contribution 2 and 3 functions on the demo learner (rolled back)."""
+    out: list[tuple[str, bool, str]] = []
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM core.users WHERE email = %s", (DEMO_EMAIL,))
+    uid = cur.fetchone()[0]
+    cur.execute("SELECT career_id, title FROM core.careers WHERE is_target ORDER BY career_id LIMIT 1")
+    row = cur.fetchone()
+    if not row:
+        return [("Analytics tests", False, "no target careers")]
+    cid, title = row
+
+    cur.execute("SELECT COUNT(*) FROM core.skill_similarity WHERE method = 'transfer_v0'")
+    n_edges = cur.fetchone()[0]
+    cur.execute("""SELECT COUNT(*) FROM core.skill_similarity a
+                   JOIN core.skill_similarity b ON b.from_skill_id = a.to_skill_id
+                    AND b.to_skill_id = a.from_skill_id AND b.method = a.method
+                   WHERE a.method = 'transfer_v0' AND a.weight <> b.weight""")
+    n_asym = cur.fetchone()[0]
+    out.append(("Directional transfer edges built", n_edges > 0,
+                f"{n_edges} edges; {n_asym} have a different weight in the reverse direction"))
+
+    cur.execute("SELECT core.fn_readiness(%s,%s,false), core.fn_readiness(%s,%s,true)", (uid, cid, uid, cid))
+    base, transfer = cur.fetchone()
+    out.append(("Transfer credit never lowers readiness", (transfer or 0) >= (base or 0),
+                f"{title}: baseline {base}, transfer-aware {transfer}"))
+
+    cur.execute("""SELECT COUNT(*) FROM core.fn_gap_analysis(%s,%s,true)
+                   WHERE gap < 0 OR gap > importance OR effective_proficiency < own_proficiency""", (uid, cid))
+    bad = cur.fetchone()[0]
+    out.append(("Gap values consistent (0 <= gap <= importance)", bad == 0, f"{bad} inconsistent rows"))
+
+    cur.execute("SELECT core.fn_build_roadmap(%s,%s,8,true)", (uid, cid))
+    rid = cur.fetchone()[0]
+    cur.execute("SELECT core.fn_roadmap_violations(%s), total_hours, total_weeks, "
+                "(SELECT COUNT(*) FROM core.roadmap_items WHERE roadmap_id = %s) "
+                "FROM core.roadmaps WHERE roadmap_id = %s", (rid, rid, rid))
+    viol, hours, weeks, items = cur.fetchone()
+    out.append(("Roadmap respects prerequisites", viol == 0,
+                f"{items} items, {hours} h, {weeks} weeks at 8 h/week, {viol} violations"))
+    conn.rollback()
+    return out
+
+
+SAMPLE_AD = ("We need a data scientist with Python, SQL and scikit-learn. "
+             "Strong mathematics and critical thinking. Experience with Tableau is a plus.")
+
+
+def nlp_tests(conn) -> list[tuple[str, bool, str]]:
+    """Extraction finds skills; approving a candidate creates Job-postings evidence (rolled back)."""
+    out: list[tuple[str, bool, str]] = []
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM core.mv_skill_lexicon")
+    lex = cur.fetchone()[0]
+    cur.execute("SELECT string_agg(skill, ', ' ORDER BY start_tok) FROM core.fn_extract_from_text(%s)", (SAMPLE_AD,))
+    found = cur.fetchone()[0] or ""
+    out.append(("Skill extraction finds skills in a job ad", "Python" in found,
+                f"lexicon {lex:,} labels; found: {found[:70]}"))
+    cur.execute("SELECT career_id FROM core.careers WHERE is_target ORDER BY career_id LIMIT 1")
+    cid = cur.fetchone()[0]
+    cur.execute("SELECT user_id FROM core.users WHERE role = 'admin' LIMIT 1")
+    admin = cur.fetchone()[0]
+    cur.execute("SELECT core.fn_submit_job_posting(%s, %s)", (cid, SAMPLE_AD))
+    batch = cur.fetchone()[0]
+    cur.execute("SELECT candidate_id FROM core.extraction_candidates WHERE batch_id = %s "
+                "ORDER BY candidate_id LIMIT 1", (batch,))
+    cand = cur.fetchone()[0]
+    cur.execute("SELECT core.fn_review_candidate(%s, %s, true)", (cand, admin))
+    cur.execute("""SELECT COUNT(*) FROM core.career_skill_evidence e
+                   JOIN core.data_sources d USING (source_id)
+                   WHERE e.career_id = %s AND d.source_name = 'Job postings'""", (cid,))
+    n = cur.fetchone()[0]
+    out.append(("Approved extraction becomes Job-postings evidence (trigger)", n == 1, f"{n} evidence row(s)"))
+    conn.rollback()
+    return out
+
+
+def security_tests(conn) -> list[tuple[str, bool, str]]:
+    """Row-level security and privileges, exercised as the learner role (rolled back)."""
+    out: list[tuple[str, bool, str]] = []
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM core.users WHERE email = %s", (DEMO_EMAIL,))
+    uid = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(DISTINCT user_id) FROM core.user_skills")
+    all_users = cur.fetchone()[0]
+    cur.execute("SELECT set_config('skillbridge.user_id', %s, true)", (str(uid),))
+    cur.execute("SET LOCAL ROLE skillbridge_learner")
+    cur.execute("SELECT COUNT(DISTINCT user_id), MIN(user_id) FROM core.user_skills")
+    seen, who = cur.fetchone()
+    out.append(("RLS: learner sees only own skills", seen == 1 and who == uid,
+                f"table holds {all_users} learners' skills; learner role sees {seen}"))
+
+    def denied(name: str, sql: str) -> None:
+        cur.execute("SAVEPOINT s")
+        try:
+            cur.execute(sql)
+            out.append((name, False, "allowed"))
+        except psycopg.Error as exc:
+            out.append((name, True, str(exc).splitlines()[0]))
+        cur.execute("ROLLBACK TO SAVEPOINT s")
+
+    denied("Learner cannot read password hashes", "SELECT password_hash FROM core.users")
+    denied("Learner cannot change evidence", "DELETE FROM core.career_skill_evidence")
+    conn.rollback()
+    return out
+
+
 def table_md(cur, sql: str) -> list[str]:
     cur.execute(sql)
     cols = [d.name for d in cur.description]
@@ -159,20 +370,26 @@ def main() -> None:
         ls.REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
         ls.REPORT_PATH.write_text("\n".join(staging_report), encoding="utf-8")
 
-        for i, name in enumerate(SQL_FILES, start=2):
-            print(f"Step {i}/5  Running sql/{name} ...")
+        for name in SQL_FILES:
+            print(f"          Running sql/{name} ...")
             conn.execute((ROOT / "sql" / name).read_text(encoding="utf-8"))
             conn.commit()
 
-        print("Step 5/5  Self-tests and report ...")
+        print("          Loading curated prerequisites and demo learner ...")
+        build_notes = load_curated_prerequisites(conn) + seed_demo_learner(conn)
+
+        print("          Self-tests and report ...")
         tests = self_tests(conn)
+        tests += analytics_tests(conn)
+        tests += nlp_tests(conn)
+        tests += security_tests(conn)
         conn.execute("ANALYZE")
         cur = conn.cursor()
         report = ["# SkillBridge core database build report", "",
                   f"Build time: {time.time() - t0:.0f} s", "", "## Integrity self-tests", "",
                   "| Test | Passed | Detail |", "| --- | --- | --- |"]
         report += [f"| {n} | {'yes' if ok else '**NO**'} | {d.replace('|', '/')[:90]} |" for n, ok, d in tests]
-        report.append("")
+        report += ["", "## Build notes", ""] + [f"- {n}" for n in build_notes] + [""]
         for title, sql in SUMMARY_QUERIES:
             report += [f"## {title}", ""] + table_md(cur, sql)
 

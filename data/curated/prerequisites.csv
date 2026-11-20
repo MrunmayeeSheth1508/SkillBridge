@@ -1,0 +1,40 @@
+prerequisite_taxonomy,prerequisite,skill_taxonomy,skill,note
+onet_knowledge,Computers and Electronics,onet_skill,Programming,Basic computing concepts before writing code
+onet_knowledge,Mathematics,onet_skill,Mathematics,Mathematical knowledge before applying it in work
+onet_skill,Reading Comprehension,onet_skill,Critical Thinking,Understanding material before evaluating it
+onet_skill,Critical Thinking,onet_skill,Complex Problem Solving,
+onet_skill,Critical Thinking,onet_skill,Systems Analysis,
+onet_skill,Systems Analysis,onet_skill,Systems Evaluation,
+onet_skill,Critical Thinking,onet_skill,Judgment and Decision Making,
+onet_skill,Programming,onet_technology,Python,General programming before a specific language
+onet_skill,Programming,onet_technology,R,
+onet_skill,Programming,onet_technology,C++,
+onet_skill,Programming,onet_technology,Java,
+onet_skill,Programming,onet_technology,JavaScript,
+onet_skill,Programming,onet_technology,Git,Version control assumes you write code
+onet_knowledge,Computers and Electronics,onet_technology,Structured query language SQL,
+onet_technology,Python,onet_technology,NumPy,
+onet_technology,NumPy,onet_technology,pandas,
+onet_technology,pandas,onet_technology,Scikit-learn,
+onet_knowledge,Mathematics,onet_technology,Scikit-learn,Linear algebra and statistics behind ML
+onet_technology,Scikit-learn,onet_technology,PyTorch,Classical ML before deep learning
+onet_technology,Scikit-learn,onet_technology,TensorFlow,
+onet_technology,Python,onet_technology,Apache Spark,
+onet_technology,Structured query language SQL,onet_technology,Apache Spark,
+onet_technology,Structured query language SQL,onet_technology,Snowflake,
+onet_technology,Microsoft Excel,onet_technology,Microsoft Power BI,Spreadsheets before BI tools
+onet_technology,Microsoft Excel,onet_technology,Tableau,
+onet_technology,Microsoft Excel,onet_technology,SAS,
+onet_knowledge,Mathematics,onet_technology,SAS,
+onet_technology,Hypertext markup language HTML,onet_technology,Cascading style sheets CSS,
+onet_technology,Hypertext markup language HTML,onet_technology,JavaScript,
+onet_technology,JavaScript,onet_technology,React,
+onet_technology,JavaScript,onet_technology,Node.js,
+onet_knowledge,Mathematics,onet_knowledge,Physics,
+onet_knowledge,Physics,onet_knowledge,Engineering and Technology,
+onet_knowledge,Engineering and Technology,onet_knowledge,Design,
+onet_knowledge,Engineering and Technology,onet_technology,Autodesk AutoCAD,
+onet_technology,Autodesk AutoCAD,onet_technology,Dassault Systemes SolidWorks,2D drafting before 3D modelling
+onet_knowledge,Mathematics,onet_technology,The MathWorks MATLAB,
+onet_knowledge,Mathematics,onet_knowledge,Economics and Accounting,
+onet_knowledge,Economics and Accounting,onet_skill,Management of Financial Resources,

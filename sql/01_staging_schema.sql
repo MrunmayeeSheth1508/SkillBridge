@@ -246,6 +246,7 @@ CREATE TABLE staging.esco_skill_collections (
 -- Model training reads the JSON files directly.
 -- =====================================================================
 CREATE TABLE staging.skillspan_sentences (
+    sentence_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,  -- file order
     split          TEXT NOT NULL,   -- train / dev / test
     idx            TEXT,
     source         TEXT,            -- e.g. 'tech', 'house'
