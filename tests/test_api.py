@@ -59,6 +59,14 @@ def test_roadmap_rejects_bad_budget(client):
     assert r.status_code == 400
 
 
-def test_extract_rejects_empty_text(client):
-    r = client.post("/api/extract", json={"career_id": first_target(client), "text": "hi"})
+def test_extract_rejects_empty_text(admin):
+    r = admin.post("/api/extract", json={"career_id": first_target(admin), "text": "hi"})
     assert r.status_code == 400
+
+
+def test_learner_builds_roadmap_under_rls(client):
+    """Runs fn_build_roadmap as skillbridge_learner: snapshot, roadmap and items pass the RLS policies."""
+    r = client.post(f"/api/roadmap/{first_target(client)}", json={"weekly_hours": 8, "use_transfer": True})
+    assert r.status_code == 200, r.get_json()
+    d = r.get_json()
+    assert d["roadmap"]["violations"] == 0 and d["items"]

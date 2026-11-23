@@ -38,7 +38,8 @@ ON CONFLICT (param_name) DO NOTHING;
 --   A(a->b) != A(b->a) in general, so T is directional. In the embedding
 --   phase, sim is replaced by sentence-embedding cosine similarity.
 -- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION core.fn_build_transfer_edges() RETURNS INTEGER
+-- p_exclude: careers left out of fitting (used by the RQ2 evaluation to avoid leakage)
+CREATE OR REPLACE FUNCTION core.fn_build_transfer_edges(p_exclude BIGINT[] DEFAULT '{}') RETURNS INTEGER
 LANGUAGE plpgsql AS $$
 DECLARE
     v_rows INTEGER;
@@ -53,6 +54,7 @@ BEGIN
         JOIN core.skills k ON k.skill_id = e.skill_id
         WHERE e.requirement_type = 'scored'
           AND k.taxonomy IN ('onet_skill', 'onet_knowledge')
+          AND NOT (e.career_id = ANY (p_exclude))
     ),
     req AS (
         SELECT career_id, skill_id FROM ev
@@ -96,6 +98,7 @@ BEGIN
         FROM core.career_skill_evidence e
         JOIN core.skills k ON k.skill_id = e.skill_id
         WHERE k.taxonomy = 'onet_technology'
+          AND NOT (e.career_id = ANY (p_exclude))
     ),
     n_a AS (
         SELECT skill_id, COUNT(*) AS n FROM used GROUP BY skill_id
@@ -317,16 +320,73 @@ BEGIN
     INSERT INTO core.roadmap_items (roadmap_id, item_no, skill_id, layer, week_start, week_end, hours)
     SELECT v_roadmap, item_no, skill_id, layer, week_start, week_end, hours FROM rm_items;
 
-    -- Learning resources, when curated: cheapest resource that covers the skill
-    UPDATE core.roadmap_items ri
-    SET resource_id = (SELECT rs.resource_id
-                       FROM core.resource_skills rs
-                       JOIN core.learning_resources lr ON lr.resource_id = rs.resource_id
-                       WHERE rs.skill_id = ri.skill_id
-                       ORDER BY lr.effort_hours / rs.coverage LIMIT 1)
-    WHERE ri.roadmap_id = v_roadmap;
+    -- Learning resources (when curated): greedy set cover, then reschedule with real hours
+    PERFORM core.fn_assign_resources(v_roadmap);
 
     RETURN v_roadmap;
+END $$;
+
+-- ---------------------------------------------------------------------
+-- Resource selection = weighted set cover (NP-hard). Greedy rule (Chvatal 1979):
+-- repeatedly take the resource with the lowest hours per NEWLY covered skill;
+-- approximation factor H(n) = 1 + 1/2 + ... + 1/n. Compared with the exact
+-- ILP optimum in scripts/rq4_roadmap_eval.py (RQ4).
+-- Skills no resource covers keep their estimated hours.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION core.fn_assign_resources(p_roadmap BIGINT)
+RETURNS INTEGER LANGUAGE plpgsql AS $$
+DECLARE
+    r        RECORD;
+    v_weekly NUMERIC := (SELECT weekly_hours FROM core.roadmaps WHERE roadmap_id = p_roadmap);
+    v_picked INTEGER := 0;
+BEGIN
+    LOOP
+        SELECT lr.resource_id, lr.effort_hours, COUNT(*) AS n_new
+        INTO r
+        FROM core.roadmap_items ri
+        JOIN core.resource_skills rs     ON rs.skill_id = ri.skill_id
+        JOIN core.learning_resources lr  ON lr.resource_id = rs.resource_id
+        WHERE ri.roadmap_id = p_roadmap AND ri.resource_id IS NULL
+        GROUP BY lr.resource_id, lr.effort_hours
+        ORDER BY lr.effort_hours / COUNT(*), COUNT(*) DESC, lr.resource_id
+        LIMIT 1;
+        EXIT WHEN NOT FOUND;
+
+        UPDATE core.roadmap_items ri
+        SET resource_id = r.resource_id
+        WHERE ri.roadmap_id = p_roadmap AND ri.resource_id IS NULL
+          AND ri.skill_id IN (SELECT skill_id FROM core.resource_skills WHERE resource_id = r.resource_id);
+        v_picked := v_picked + 1;
+    END LOOP;
+
+    IF v_picked = 0 THEN
+        RETURN 0;
+    END IF;
+
+    -- a resource's hours are shared by the roadmap steps it covers
+    UPDATE core.roadmap_items ri
+    SET hours = ROUND(lr.effort_hours / x.n_items, 1), hours_source = 'resource'
+    FROM core.learning_resources lr,
+         (SELECT resource_id, COUNT(*) AS n_items FROM core.roadmap_items
+          WHERE roadmap_id = p_roadmap AND resource_id IS NOT NULL GROUP BY resource_id) x
+    WHERE ri.roadmap_id = p_roadmap AND ri.resource_id = lr.resource_id AND x.resource_id = lr.resource_id;
+
+    -- reschedule in the same (prerequisite-valid) order with the new hours
+    WITH o AS (
+        SELECT item_no, hours, SUM(hours) OVER (ORDER BY item_no) AS cum
+        FROM core.roadmap_items WHERE roadmap_id = p_roadmap
+    )
+    UPDATE core.roadmap_items ri
+    SET week_start = (FLOOR((o.cum - o.hours) / v_weekly) + 1)::INT,
+        week_end   = GREATEST(CEIL(o.cum / v_weekly), FLOOR((o.cum - o.hours) / v_weekly) + 1)::INT
+    FROM o
+    WHERE ri.roadmap_id = p_roadmap AND ri.item_no = o.item_no;
+
+    UPDATE core.roadmaps
+    SET total_hours = (SELECT COALESCE(SUM(hours), 0) FROM core.roadmap_items WHERE roadmap_id = p_roadmap),
+        total_weeks = (SELECT COALESCE(MAX(week_end), 0) FROM core.roadmap_items WHERE roadmap_id = p_roadmap)
+    WHERE roadmap_id = p_roadmap;
+    RETURN v_picked;
 END $$;
 
 -- Number of prerequisite violations in a stored roadmap (must be 0)

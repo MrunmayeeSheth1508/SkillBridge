@@ -95,7 +95,7 @@ def main() -> None:
             sys.exit("No crosswalk loaded - put the ESCO-O*NET crosswalk in data/raw and rebuild.")
         out = ["# RQ1 - Evidence-aware requirements: O*NET vs ESCO", "",
                "Target careers only. Work activities excluded. ESCO evidence reaches O*NET careers through "
-               "the official crosswalk (exact / close / narrow / broad matches).", "",
+               "the official crosswalk (default: exact + close matches; section 4 compares with broad/narrow).", "",
                "Tiers make the sources comparable: **core** = O*NET importance >= 3.5/5, ESCO *essential*, "
                "or an O*NET In-Demand tool; **supporting** = O*NET 2.5-3.5, ESCO *optional*, other tools; "
                "**peripheral** = O*NET < 2.5.", ""]
@@ -183,10 +183,13 @@ def main() -> None:
             d = [abs(float(r[5]) - float(r[4])) for r in rows if r[4] is not None and r[5] is not None]
             return (both / max(o + e_ + both, 1), k, added, sum(d) / max(len(d), 1))
 
-        full = summary()
-        cur.execute("UPDATE model_parameters SET param_value = 0 WHERE param_name = 'crosswalk_use_broad_narrow'")
-        cur.execute("SELECT * FROM fn_apply_crosswalk()")
-        strict = summary()
+        def with_setting(v: int) -> tuple:
+            cur.execute("UPDATE model_parameters SET param_value = %s WHERE param_name = 'crosswalk_use_broad_narrow'", (v,))
+            cur.execute("SELECT * FROM fn_apply_crosswalk()")
+            return summary()
+
+        full = with_setting(1)
+        strict = with_setting(0)
         conn.rollback()                     # leave the database exactly as it was
         cur.execute("SET search_path = core, staging, public")
         out += ["## 4. Sensitivity: which crosswalk links to trust", "",

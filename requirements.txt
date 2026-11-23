@@ -1,0 +1,7 @@
+pandas
+psycopg
+python-dotenv
+flask
+pytest
+pulp
+highspy

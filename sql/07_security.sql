@@ -51,6 +51,9 @@ GRANT UPDATE (full_name, weekly_hours) ON core.users TO skillbridge_learner;
 GRANT SELECT, INSERT, UPDATE, DELETE ON core.user_skills TO skillbridge_learner;
 GRANT SELECT ON core.user_skill_history TO skillbridge_learner;
 GRANT SELECT, INSERT ON core.gap_snapshots, core.roadmaps, core.roadmap_items TO skillbridge_learner;
+GRANT UPDATE (resource_id, hours, hours_source, week_start, week_end) ON core.roadmap_items
+      TO skillbridge_learner;                     -- fn_assign_resources attaches courses and reschedules
+GRANT UPDATE (total_hours, total_weeks) ON core.roadmaps TO skillbridge_learner;
 GRANT USAGE ON SEQUENCE core.gap_snapshots_snapshot_id_seq, core.roadmaps_roadmap_id_seq TO skillbridge_learner;
 
 -- ---------------------------------------------------------------------

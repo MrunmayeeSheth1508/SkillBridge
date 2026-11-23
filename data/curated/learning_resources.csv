@@ -1,0 +1,46 @@
+title,provider,url,resource_type,effort_hours,difficulty,is_free,skills
+Python for Everybody,University of Michigan (Dr. Chuck),https://www.py4e.com/,course,60,beginner,true,Python;Programming
+CS50's Introduction to Programming with Python,Harvard University,https://cs50.harvard.edu/python/,course,90,beginner,true,Python;Programming
+CS50's Introduction to Computer Science,Harvard University,https://cs50.harvard.edu/x/,course,120,beginner,true,Programming;Computers and Electronics;Python;Structured query language SQL
+The Missing Semester of Your CS Education,MIT,https://missing.csail.mit.edu/,course,12,beginner,true,Git;Computers and Electronics
+Kaggle Learn: Pandas,Kaggle,https://www.kaggle.com/learn/pandas,tutorial,4,beginner,true,pandas
+Kaggle Learn: Intro to Machine Learning,Kaggle,https://www.kaggle.com/learn/intro-to-machine-learning,tutorial,3,beginner,true,Scikit-learn;pandas
+Kaggle Learn: Intermediate Machine Learning,Kaggle,https://www.kaggle.com/learn/intermediate-machine-learning,tutorial,4,intermediate,true,Scikit-learn;pandas
+Kaggle Learn: Intro to SQL,Kaggle,https://www.kaggle.com/learn/intro-to-sql,tutorial,3,beginner,true,Structured query language SQL
+Kaggle Learn: Data Visualization,Kaggle,https://www.kaggle.com/learn/data-visualization,tutorial,4,beginner,true,Python
+NumPy: the absolute basics for beginners,NumPy,https://numpy.org/doc/stable/user/absolute_beginners.html,tutorial,3,beginner,true,NumPy
+Python for Data Analysis (3rd ed.),Wes McKinney,https://wesmckinney.com/book/,book,40,intermediate,true,pandas;NumPy;Python
+Machine Learning Specialization,DeepLearning.AI / Stanford (Coursera),https://www.coursera.org/specializations/machine-learning-introduction,course,90,intermediate,false,Python;NumPy;Scikit-learn;Mathematics
+Deep Learning Specialization,DeepLearning.AI (Coursera),https://www.coursera.org/specializations/deep-learning,course,120,intermediate,false,Python;TensorFlow;NumPy
+Practical Deep Learning for Coders,fast.ai,https://course.fast.ai/,course,60,intermediate,true,PyTorch;Python
+PyTorch: Learn the Basics,PyTorch,https://pytorch.org/tutorials/beginner/basics/intro.html,tutorial,6,beginner,true,PyTorch
+TensorFlow Tutorials,TensorFlow,https://www.tensorflow.org/tutorials,tutorial,10,beginner,true,TensorFlow
+Apache Spark Quick Start,Apache Software Foundation,https://spark.apache.org/docs/latest/quick-start.html,tutorial,4,intermediate,true,Apache Spark
+Mathematics for Machine Learning Specialization,Imperial College London (Coursera),https://www.coursera.org/specializations/mathematics-machine-learning,course,60,intermediate,false,Mathematics
+Statistics and Probability,Khan Academy,https://www.khanacademy.org/math/statistics-probability,course,40,beginner,true,Mathematics
+Linear Algebra (18.06),MIT OpenCourseWare,https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/,course,60,intermediate,true,Mathematics
+SQLBolt interactive lessons,SQLBolt,https://sqlbolt.com/,tutorial,5,beginner,true,Structured query language SQL
+PostgreSQL Tutorial,PostgreSQL Tutorial,https://www.postgresqltutorial.com/,tutorial,15,beginner,true,Structured query language SQL
+Database Systems (15-445/645),Carnegie Mellon University,https://15445.courses.cs.cmu.edu/,course,80,advanced,true,Structured query language SQL;Computers and Electronics;Systems Analysis
+Microsoft Power BI Data Analyst learning path,Microsoft Learn,https://learn.microsoft.com/en-us/credentials/certifications/data-analyst-associate/,course,30,intermediate,true,Microsoft Power BI
+Tableau Free Training Videos,Tableau,https://www.tableau.com/learn/training,tutorial,10,beginner,true,Tableau
+Excel Skills for Business Specialization,Macquarie University (Coursera),https://www.coursera.org/specializations/excel,course,60,beginner,false,Microsoft Excel
+Microsoft 365 Training (Excel / Word / PowerPoint),Microsoft Support,https://support.microsoft.com/en-us/training,tutorial,10,beginner,true,Microsoft Excel;Microsoft Word;Microsoft PowerPoint
+Google Data Analytics Professional Certificate,Google (Coursera),https://www.coursera.org/professional-certificates/google-data-analytics,course,180,beginner,false,Structured query language SQL;Tableau;R;Microsoft Excel
+R for Data Science (2nd ed.),Wickham / Cetinkaya-Rundel / Grolemund,https://r4ds.hadley.nz/,book,40,beginner,true,R
+Pro Git,Scott Chacon & Ben Straub,https://git-scm.com/book/en/v2,book,15,beginner,true,Git
+Learn Git Branching,learngitbranching.js.org,https://learngitbranching.js.org/,tutorial,3,beginner,true,Git
+MDN Learn Web Development,Mozilla,https://developer.mozilla.org/en-US/docs/Learn_web_development,course,60,beginner,true,Hypertext markup language HTML;Cascading style sheets CSS;JavaScript
+The Odin Project: Foundations,The Odin Project,https://www.theodinproject.com/paths/foundations,course,100,beginner,true,Hypertext markup language HTML;Cascading style sheets CSS;JavaScript;Git
+The Modern JavaScript Tutorial,javascript.info,https://javascript.info/,book,50,beginner,true,JavaScript
+React: Learn,React,https://react.dev/learn,tutorial,15,intermediate,true,React;JavaScript
+Node.js: Learn,OpenJS Foundation,https://nodejs.org/en/learn,tutorial,10,intermediate,true,Node.js;JavaScript
+Java Programming MOOC,University of Helsinki,https://java-programming.mooc.fi/,course,100,beginner,true,Java;Programming
+Learn C++,learncpp.com,https://www.learncpp.com/,book,80,beginner,true,C++;Programming
+MATLAB Onramp,MathWorks,https://matlabacademy.mathworks.com/,tutorial,2,beginner,true,The MathWorks MATLAB
+Autodesk Learning: AutoCAD,Autodesk,https://www.autodesk.com/learn,tutorial,20,beginner,true,Autodesk AutoCAD;Design
+SOLIDWORKS Training,Dassault Systemes,https://my.solidworks.com/training,tutorial,20,beginner,true,Dassault Systemes SolidWorks;Design;Engineering and Technology
+Learning How to Learn,Deep Teaching Solutions (Coursera),https://www.coursera.org/learn/learning-how-to-learn,course,15,beginner,false,Active Learning;Learning Strategies
+Writing in the Sciences,Stanford University (Coursera),https://www.coursera.org/learn/sciwrite,course,25,beginner,false,Writing;English Language
+Introduction to Financial Accounting,Wharton (Coursera),https://www.coursera.org/learn/wharton-accounting,course,20,beginner,false,Economics and Accounting;Management of Financial Resources
+Google Project Management Professional Certificate,Google (Coursera),https://www.coursera.org/professional-certificates/google-project-management,course,150,beginner,false,Coordination;Monitoring;Administration and Management;Time Management

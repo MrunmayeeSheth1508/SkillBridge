@@ -81,7 +81,7 @@ WITH target(onet_soc_code, domain) AS (VALUES
   ('17-2141.02', 'Mechanical & manufacturing engineering'),  -- Automotive Engineers
   ('17-2199.08', 'Mechanical & manufacturing engineering'),  -- Robotics Engineers
   ('17-3027.00', 'Mechanical & manufacturing engineering'),  -- Mechanical Engineering Technologists
-  ('13-2099.01', 'Business & finance analytics'), -- Financial and Investment Analysts
+  ('13-2099.01', 'Business & finance analytics'), -- Financial and Investment Analysts (13-2051.00 has no ratings)
   ('13-1111.00', 'Business & finance analytics'), -- Management Analysts
   ('13-1161.00', 'Business & finance analytics'), -- Market Research Analysts
   ('13-2041.00', 'Business & finance analytics'), -- Credit Analysts

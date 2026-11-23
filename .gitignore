@@ -3,3 +3,4 @@ data/raw/
 data/staging/
 .env
 __pycache__/
+.flask_secret

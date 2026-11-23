@@ -28,6 +28,11 @@
   </div>
   <div class="stats" id="stats"></div>
   <div class="live"><span class="dot"></span>PostgreSQL · live</div>
+  <div class="user-menu">
+    <span class="role-chip" id="roleChip">learner</span>
+    <span class="user-name" id="userName">…</span>
+    <button class="ghost small-btn" id="logoutBtn">Sign out</button>
+  </div>
 </header>
 
 <div class="layout">
@@ -38,7 +43,7 @@
         <div class="avatar" id="avatar">DL</div>
         <div>
           <div class="profile-name" id="profileName">Demo Learner</div>
-          <div class="muted small">Mechanical engineer exploring a career move</div>
+          <div class="muted small" id="profileSub">Learner</div>
         </div>
       </div>
       <label class="field-label">Weekly study budget <span class="mono" id="hoursLabel">8 h</span></label>
@@ -139,7 +144,7 @@
     </section>
 
     <!-- NLP: job description analyser -->
-    <section class="card" id="nlp">
+    <section class="card admin-only" id="nlp" hidden>
       <div class="card-title-row">
         <div>
           <h3>Job description analyser</h3>
@@ -167,6 +172,40 @@
         </div>
       </div>
       <div id="postingEvidence"></div>
+    </section>
+
+    <!-- ADMIN: curation and configuration -->
+    <section class="card admin-only" id="admin" hidden>
+      <div class="card-title-row">
+        <div>
+          <h3>Administration</h3>
+          <div class="muted small">Runs as the <span class="mono">skillbridge_admin</span> database role · every change is checked by PostgreSQL</div>
+        </div>
+        <div class="seg" id="adminTabs">
+          <button data-t="prereq" class="on">Prerequisites</button><button data-t="params">Parameters</button><button data-t="users">Users</button>
+        </div>
+      </div>
+
+      <div class="admin-pane" data-pane="prereq">
+        <div class="prereq-form">
+          <div class="search-wrap"><input type="text" id="preA" placeholder="Learn first… (search a skill)" autocomplete="off"><div class="dropdown" id="preADd"></div></div>
+          <span class="arrow-big">→</span>
+          <div class="search-wrap"><input type="text" id="preB" placeholder="…then this skill" autocomplete="off"><div class="dropdown" id="preBDd"></div></div>
+          <input type="text" id="preNote" placeholder="Reason (optional)">
+          <button class="primary" id="addPrereq">Add prerequisite</button>
+        </div>
+        <div class="muted small" style="margin:8px 0 12px">Try adding a loop (e.g. <i>Scikit-learn → Python</i>): the database trigger rejects it.</div>
+        <div class="admin-table" id="prereqTable"></div>
+      </div>
+
+      <div class="admin-pane" data-pane="params" hidden>
+        <div class="muted small" style="margin-bottom:10px">Changes take effect immediately: every gap, readiness and roadmap is recomputed in SQL on the next request.</div>
+        <div class="admin-table" id="paramTable"></div>
+      </div>
+
+      <div class="admin-pane" data-pane="users" hidden>
+        <div class="admin-table" id="userTable"></div>
+      </div>
     </section>
 
     <!-- Where am I closest + compare -->

@@ -100,6 +100,53 @@ def load_curated_prerequisites(conn) -> list[str]:
     return notes
 
 
+def load_curated_resources(conn) -> list[str]:
+    """Load data/curated/learning_resources.csv (skills separated by ';')."""
+    path = CURATED_DIR / "learning_resources.csv"
+    if not path.exists():
+        return ["learning_resources.csv not found - roadmaps use estimated hours"]
+    cur = conn.cursor()
+    loaded, links, missing = 0, 0, []
+    with path.open(encoding="utf-8") as f:
+        for i, row in enumerate(csv.DictReader(f), start=2):
+            title = (row.get("title") or "").strip()
+            if not title or title.upper().startswith("EXAMPLE"):
+                continue
+            try:
+                cur.execute("SAVEPOINT r")
+                cur.execute("""INSERT INTO core.learning_resources
+                               (title, provider, url, resource_type, effort_hours, difficulty, is_free)
+                               VALUES (%s, %s, NULLIF(%s, ''), %s, %s, NULLIF(%s, ''), %s)
+                               ON CONFLICT (url) DO UPDATE SET title = EXCLUDED.title
+                               RETURNING resource_id""",
+                            (title, row.get("provider") or None, (row.get("url") or "").strip(),
+                             (row.get("resource_type") or "course").strip().lower(),
+                             float(row.get("effort_hours") or 0),
+                             (row.get("difficulty") or "").strip().lower(),
+                             str(row.get("is_free") or "").strip().lower() in ("true", "yes", "1")))
+                rid = cur.fetchone()[0]
+                cur.execute("RELEASE SAVEPOINT r")
+            except (psycopg.Error, ValueError) as exc:
+                cur.execute("ROLLBACK TO SAVEPOINT r")
+                missing.append(f"learning_resources.csv line {i} rejected: {str(exc).splitlines()[0]}")
+                continue
+            loaded += 1
+            for name in (row.get("skills") or "").split(";"):
+                name = name.strip()
+                if not name:
+                    continue
+                sid = next((x for x in (find_skill(cur, t, name) for t in
+                            ("onet_technology", "onet_skill", "onet_knowledge", "esco")) if x), None)
+                if sid is None:
+                    missing.append(f"learning_resources.csv line {i}: skill not found -> {name}")
+                    continue
+                cur.execute("INSERT INTO core.resource_skills (resource_id, skill_id) VALUES (%s, %s) "
+                            "ON CONFLICT DO NOTHING", (rid, sid))
+                links += cur.rowcount
+    conn.commit()
+    return [f"{loaded} learning resources loaded, {links} resource-skill links"] + missing[:30]
+
+
 def seed_demo_learner(conn) -> list[str]:
     cur = conn.cursor()
     cur.execute("""INSERT INTO core.users (full_name, email, password_hash, role, weekly_hours)
@@ -403,7 +450,8 @@ def main() -> None:
             conn.commit()
 
         print("          Loading curated prerequisites, lexicon blocklist and demo learner ...")
-        build_notes = load_curated_prerequisites(conn) + seed_demo_learner(conn)
+        build_notes = (load_curated_prerequisites(conn) + load_curated_resources(conn)
+                       + seed_demo_learner(conn))
         print("          Applying the ESCO-O*NET crosswalk ...")
         from crosswalk import load_crosswalk
         build_notes += load_crosswalk(conn, raw_dir)

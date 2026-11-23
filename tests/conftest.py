@@ -62,9 +62,32 @@ def three_skills(cur) -> tuple[int, int, int]:
     return a, b, c
 
 
-@pytest.fixture(scope="session")
-def client():
-    """Flask test client (talks to the real database)."""
+def _client(email=None, password=None):
     import app as dashboard
     dashboard.app.testing = True
-    return dashboard.app.test_client()
+    c = dashboard.app.test_client()
+    if email:
+        r = c.post("/api/login", json={"email": email, "password": password})
+        assert r.status_code == 200, f"login failed for {email}: {r.get_json()}"
+    return c
+
+
+@pytest.fixture(scope="session")
+def client():
+    """Logged in as the demo learner (talks to the real database)."""
+    return _client("demo@skillbridge.local", "demo1234")
+
+
+@pytest.fixture(scope="session")
+def learner2():
+    return _client("learner2@skillbridge.local", "learner1234")
+
+
+@pytest.fixture(scope="session")
+def admin():
+    return _client("admin@skillbridge.local", "admin1234")
+
+
+@pytest.fixture()
+def anon():
+    return _client()

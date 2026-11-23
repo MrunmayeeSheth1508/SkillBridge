@@ -1,0 +1,2 @@
+participant,role,sus1,sus2,sus3,sus4,sus5,sus6,sus7,sus8,sus9,sus10,t1_outcome,t1_seconds,t2_outcome,t2_seconds,t3_outcome,t3_seconds,t4_outcome,t4_seconds,t5_outcome,t5_seconds,t6_outcome,t6_seconds,roadmap_order,trust_evidence,comment_useful,comment_confusing
+EXAMPLE-P00,student,4,2,4,1,4,2,5,1,4,2,success,95,success,40,partial,150,success,80,success,110,fail,120,4,5,"example: delete this row","example: delete this row"

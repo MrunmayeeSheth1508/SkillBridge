@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS staging.esco_onet_crosswalk (
 INSERT INTO core.model_parameters (param_name, param_value, description) VALUES
  ('crosswalk_close_factor',        0.90, 'Confidence factor for ESCO evidence reached through a close match'),
  ('crosswalk_broad_narrow_factor', 0.75, 'Confidence factor for ESCO evidence reached through a broad or narrow match'),
- ('crosswalk_use_broad_narrow',    1,    '1 = also import ESCO evidence through broad/narrow matches; 0 = exact + close only')
+ ('crosswalk_use_broad_narrow',    0,    '1 = also import ESCO evidence through broad/narrow matches; 0 = exact + close only (default: more defensible)')
 ON CONFLICT (param_name) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION core.fn_apply_crosswalk()

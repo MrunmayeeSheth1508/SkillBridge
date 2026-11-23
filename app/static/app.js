@@ -20,6 +20,7 @@ async function api(path, opts = {}) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { location.href = "/login"; throw new Error("Please log in"); }
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }
@@ -386,6 +387,7 @@ function renderRoadmap(d) {
     <div class="rm-chip"><b>${fmt(r.total_hours, 0)}</b>hours total</div>
     <div class="rm-chip"><b>${r.total_weeks}</b>weeks at ${Number(r.weekly_hours)} h/week</div>
     <div class="rm-chip"><b>${layers}</b>prerequisite layers</div>
+    <div class="rm-chip"><b>${items.filter((i) => i.resource).length}</b>steps with a course (greedy set cover)</div>
     <div class="rm-chip ${r.violations === 0 ? "ok" : ""}"><b>${r.violations === 0 ? "✓" : r.violations}</b>${r.violations === 0 ? "prerequisites valid" : "violations"}</div>`;
   if (!items.length) {
     $("#roadmap").innerHTML = `<div class="empty">No gaps above the threshold - you're ready for this career.</div>`;
@@ -396,15 +398,18 @@ function renderRoadmap(d) {
   let ruler = "";
   for (let w = 1; w <= weeks; w += step) ruler += `<span style="left:${((w - 0.5) / weeks) * 100}%">W${w}</span>`;
   const rows = items.map((it) => {
-    const left = ((it.week_start - 1) / weeks) * 100;
-    const width = Math.max(((it.week_end - it.week_start + 1) / weeks) * 100, 1.2);
+    const width = Math.max(((it.week_end - it.week_start + 1) / weeks) * 100, 4.5);   // room for the "40h" label
+    const left = Math.min(((it.week_start - 1) / weeks) * 100, 100 - width);          // never past the right edge
     const color = LAYER_COLORS[(it.layer - 1) % LAYER_COLORS.length];
     const after = it.after && it.after.length ? `<div class="g-after">after ${esc(it.after.join(", "))}</div>` : "";
+    const course = it.resource
+      ? `<div class="g-after g-course" title="${esc(it.resource || "")}">📘 ${it.resource_url ? `<a href="${esc(it.resource_url)}" target="_blank" rel="noopener">${esc(it.resource)}</a>` : esc(it.resource)}</div>`
+      : "";
     return `
       <div class="g-row">
         <div class="g-label">
           <span class="layer">L${it.layer}</span>
-          <div style="min-width:0"><div class="n" title="${esc(it.skill)}">${esc(it.skill)}</div>${after}</div>
+          <div style="min-width:0"><div class="n" title="${esc(it.skill)}">${esc(it.skill)}</div>${course}${after}</div>
         </div>
         <div class="g-track" style="background-size:${100 / weeks}% 100%">
           <div class="g-bar" style="left:${left}%;width:${width}%;background:${color};color:${inkFor(color)};animation-delay:${it.item_no * 40}ms"
@@ -592,6 +597,116 @@ async function loadPostingEvidence() {
     </div>`;
 }
 
+
+/* ------------------------------------------------------------------ session + admin */
+async function loadSession() {
+  const ses = await api("/api/session");
+  state.session = ses;
+  $("#userName").textContent = ses.full_name;
+  const chip = $("#roleChip");
+  chip.textContent = ses.role;
+  chip.classList.toggle("admin", ses.role === "admin");
+  $("#profileSub").textContent = ses.role === "admin" ? "Administrator · curates evidence and prerequisites"
+    : ses.is_demo ? "Demo learner · mechanical engineer exploring a career move" : "Learner";
+  $("#resetBtn").hidden = !ses.is_demo;
+  document.querySelectorAll(".admin-only").forEach((el) => { el.hidden = ses.role !== "admin"; });
+  if (ses.role === "admin") setupAdmin();
+}
+
+function skillPicker(inputSel, ddSel, onPick) {
+  const input = $(inputSel), dd = $(ddSel);
+  input.addEventListener("input", debounce(async () => {
+    input.dataset.id = "";
+    const q = input.value.trim();
+    if (q.length < 2) { dd.classList.remove("open"); return; }
+    const rows = await api(`/api/skills/search?all=1&q=${encodeURIComponent(q)}`);
+    dd.innerHTML = rows.length ? rows.map((r) => `<div class="opt" data-id="${r.skill_id}" data-name="${esc(r.name)}">
+        <span>${esc(r.name)}</span><span><span class="muted small">${r.taxonomy === "esco" ? "ESCO" : "O*NET"}</span>
+        <span class="chip t-${r.skill_type}">${TYPE_LABEL[r.skill_type] || r.skill_type}</span></span></div>`).join("")
+      : `<div class="none">No matching skill</div>`;
+    dd.classList.add("open");
+    dd.querySelectorAll(".opt").forEach((o) => o.addEventListener("click", () => {
+      input.value = o.dataset.name; input.dataset.id = o.dataset.id; dd.classList.remove("open");
+      if (onPick) onPick();
+    }));
+  }, 200));
+}
+
+function table(headers, rows) {
+  return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+}
+
+async function loadPrereqs() {
+  const rows = await api("/api/admin/prerequisites");
+  $("#prereqTable").innerHTML = rows.length ? table(["Learn first", "", "Then", "Reason", "Added by", ""],
+    rows.map((r) => `<tr>
+      <td><span class="chip t-${r.prerequisite_type}">${TYPE_LABEL[r.prerequisite_type] || ""}</span> ${esc(r.prerequisite)}</td>
+      <td style="color:var(--rose)">→</td>
+      <td><span class="chip t-${r.skill_type}">${TYPE_LABEL[r.skill_type] || ""}</span> ${esc(r.skill)}</td>
+      <td class="muted">${esc(r.note || "")}</td>
+      <td class="muted">${esc(r.created_by || "curated CSV")}</td>
+      <td><button class="mini" data-s="${r.skill_id}" data-p="${r.prereq_skill_id}">Remove</button></td></tr>`))
+    : `<div class="empty">No prerequisites yet.</div>`;
+  $("#prereqTable").querySelectorAll("button").forEach((b) => b.addEventListener("click", async () => {
+    await api(`/api/admin/prerequisites?skill_id=${b.dataset.s}&prereq_skill_id=${b.dataset.p}`, { method: "DELETE" });
+    toast("Prerequisite removed");
+    loadPrereqs(); loadOverview();
+  }));
+}
+
+async function addPrereq() {
+  const a = $("#preA").dataset.id, b = $("#preB").dataset.id;
+  if (!a || !b) return toast("Pick both skills from the suggestions");
+  try {
+    await api("/api/admin/prerequisites", { method: "POST",
+      body: { prereq_skill_id: Number(a), skill_id: Number(b), note: $("#preNote").value } });
+    toast("Prerequisite added - checked for cycles by the trigger");
+    ["#preA", "#preB", "#preNote"].forEach((sel) => { $(sel).value = ""; $(sel).dataset.id = ""; });
+    loadPrereqs(); loadOverview();
+  } catch (e) {
+    toast(`Rejected by PostgreSQL: ${e.message}`);
+  }
+}
+
+async function loadParams() {
+  const rows = await api("/api/admin/parameters");
+  $("#paramTable").innerHTML = table(["Parameter", "Value", "Meaning", ""], rows.map((r) => `<tr>
+      <td class="mono">${esc(r.param_name)}</td>
+      <td><input type="number" step="0.05" value="${r.param_value}" data-n="${esc(r.param_name)}"></td>
+      <td class="muted">${esc(r.description)}</td>
+      <td><button class="mini save" data-n="${esc(r.param_name)}">Save</button></td></tr>`));
+  $("#paramTable").querySelectorAll("button").forEach((b) => b.addEventListener("click", async () => {
+    const v = Number($(`#paramTable input[data-n="${b.dataset.n}"]`).value);
+    await api("/api/admin/parameters", { method: "PUT", body: { param_name: b.dataset.n, param_value: v } });
+    toast(`${b.dataset.n} = ${v} · recomputing`);
+    loadOverview(); refreshAnalysis();
+  }));
+}
+
+async function loadUsers() {
+  const rows = await api("/api/admin/users");
+  $("#userTable").innerHTML = table(["ID", "Name", "Email", "Role", "Skills", "Weekly h", "Joined"], rows.map((u) => `<tr>
+      <td class="mono">${u.user_id}</td><td>${esc(u.full_name)}</td><td class="muted">${esc(u.email)}</td>
+      <td><span class="role-chip ${u.role === "admin" ? "admin" : ""}">${u.role}</span></td>
+      <td class="mono">${u.skills}</td><td class="mono">${Number(u.weekly_hours)}</td><td class="muted">${u.created}</td></tr>`));
+}
+
+let adminReady = false;
+function setupAdmin() {
+  if (adminReady) return;
+  adminReady = true;
+  skillPicker("#preA", "#preADd");
+  skillPicker("#preB", "#preBDd");
+  $("#addPrereq").addEventListener("click", addPrereq);
+  $("#adminTabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    $("#adminTabs").querySelectorAll("button").forEach((x) => x.classList.remove("on"));
+    b.classList.add("on");
+    document.querySelectorAll(".admin-pane").forEach((p) => { p.hidden = p.dataset.pane !== b.dataset.t; });
+    ({ prereq: loadPrereqs, params: loadParams, users: loadUsers })[b.dataset.t]();
+  }));
+  loadPrereqs();
+}
+
 /* ------------------------------------------------------------------ init */
 async function init() {
   chartDefaults();
@@ -616,7 +731,12 @@ async function init() {
     toast("Demo profile restored");
     refreshAnalysis();
   });
+  $("#logoutBtn").addEventListener("click", async () => {
+    await api("/api/logout", { method: "POST" });
+    location.href = "/login";
+  });
   try {
+    await loadSession();
     await Promise.all([loadOverview(), loadMe()]);
     await loadCareers();
   } catch (e) {

@@ -329,6 +329,7 @@ CREATE TABLE core.roadmap_items (
     week_start  INTEGER NOT NULL CHECK (week_start > 0),
     week_end    INTEGER NOT NULL,
     hours       NUMERIC(6,1) NOT NULL CHECK (hours >= 0),
+    hours_source TEXT NOT NULL DEFAULT 'estimate' CHECK (hours_source IN ('estimate', 'resource')),
     PRIMARY KEY (roadmap_id, item_no),
     CHECK (week_end >= week_start)
 );

@@ -1,25 +1,9 @@
--- =====================================================================
--- SkillBridge - 06_nlp.sql
--- Job-description skill extraction, implemented inside PostgreSQL.
---
---   1. Lexicon   : materialized view over SKILL_ALIASES (~100k labels)
---                  + derived tool aliases ("Structured query language SQL" -> "SQL")
---   2. Matching  : n-grams (1-6 tokens) of the text, matched
---                    exact  -> B-tree on the normalised alias
---                    fuzzy  -> pg_trgm trigram similarity (GIN index)
---                  overlapping matches resolved longest-first
---   3. Review    : candidates stored in EXTRACTION_CANDIDATES as 'pending';
---                  a trigger turns approved candidates into
---                  CAREER_SKILL_EVIDENCE rows from the 'Job postings' source
--- Evaluated against SkillSpan by scripts/evaluate_extraction.py.
--- =====================================================================
+
 SET search_path = core, staging, public;
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
--- ---------------------------------------------------------------------
--- Schema additions for the extraction workflow
--- ---------------------------------------------------------------------
+
 ALTER TABLE core.skill_aliases DROP CONSTRAINT IF EXISTS skill_aliases_alias_type_check;
 ALTER TABLE core.skill_aliases ADD CONSTRAINT skill_aliases_alias_type_check
     CHECK (alias_type IN ('preferred', 'alternative', 'hidden', 'manual', 'derived'));
